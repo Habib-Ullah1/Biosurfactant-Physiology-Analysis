@@ -4,6 +4,16 @@ message("\n=== MODULE 1: Building master dataset ===\n")
 
 day_map <- c(`1`=1,`2`=3,`3`=5,`4`=7,`5`=9,`6`=11)
 
+# Plain ASCII temperature mapping (avoids degree symbol corruption under LC_CTYPE=C)
+temp_ascii <- function(x) {
+  case_when(
+    grepl("4",  x) ~ "4C",
+    grepl("15", x) ~ "15C",
+    grepl("30", x) ~ "30C",
+    TRUE           ~ as.character(x)
+  )
+}
+
 experiments <- list(
   list(id="exp2",  file=FILE_TEMP, sheet="exp2 raw data",  type="temp_only",     has_salinity=FALSE),
   list(id="exp3",  file=FILE_TEMP, sheet="exp3 raw data",  type="temp_only",     has_salinity=FALSE),
@@ -32,7 +42,7 @@ read_experiment <- function(exp) {
       reading     = as.integer(reading),
       day         = day_map[as.character(reading)],
       strain      = as.character(strain),
-      temperature = as.character(temperature),
+      temperature = temp_ascii(as.character(temperature)),
       st_raw      = as.numeric(st_raw),
       od_avg      = as.numeric(od_avg),
       od1         = as.numeric(od1),
@@ -48,7 +58,7 @@ message("Reading experiments...")
 raw_df <- map(experiments, read_experiment) %>% bind_rows()
 message("  Rows: ", nrow(raw_df), " | Experiments: ",
         n_distinct(raw_df$experiment), " | Strains: ", n_distinct(raw_df$strain))
-message("  Temperature values found: ", paste(sort(unique(raw_df$temperature)), collapse=" | "))
+message("  Temperature values: ", paste(sort(unique(raw_df$temperature)), collapse=" | "))
 
 message("\nQC checks...")
 b <- raw_df %>% filter(day==1) %>%
@@ -68,15 +78,17 @@ master <- raw_df %>%
   left_join(baseline_st, by=c("experiment","strain","temperature","salinity_m")) %>%
   mutate(
     delta_gamma    = baseline_st - st,
-    delta_gamma_OD = if_else(od > OD_MIN_THRESHOLD, delta_gamma/od, NA_real_)
+    delta_gamma_OD = if_else(od > OD_MIN_THRESHOLD, delta_gamma/od, NA_real_),
+    temperature    = factor(temperature, levels=TEMP_LEVELS),
+    salinity_m     = factor(salinity_m,  levels=c(0,0.5,1.0,1.5))
   )
 
 message("\nComputing summary metrics...")
 auc_trap <- function(days, values) {
   d <- data.frame(x=as.numeric(days), y=values) %>%
-    filter(!is.na(y), !is.na(x)) %>% arrange(x)
+    filter(!is.na(y),!is.na(x)) %>% arrange(x)
   if (nrow(d)<2) return(NA_real_)
-  sum(diff(d$x) * (head(d$y,-1) + tail(d$y,-1)) / 2)
+  sum(diff(d$x)*(head(d$y,-1)+tail(d$y,-1))/2)
 }
 
 summary_metrics <- master %>%
@@ -91,9 +103,13 @@ summary_metrics <- master %>%
     AUC_delta_gamma_OD = auc_trap(day, delta_gamma_OD),
     n_readings         = n(),
     .groups            = "drop"
-  )
+  ) %>%
+  mutate(across(c(max_delta_gamma,max_delta_gamma_OD,max_OD,
+                  AUC_delta_gamma,AUC_delta_gamma_OD),
+                ~if_else(is.infinite(.),NA_real_,.)))
+
 message("  Summary rows: ", nrow(summary_metrics))
-message("  Temperature values in summary: ", paste(sort(unique(summary_metrics$temperature)), collapse=" | "))
+message("  Temperature values: ", paste(sort(unique(as.character(summary_metrics$temperature))), collapse=" | "))
 
 message("\nAttaching strain metadata...")
 master_full  <- master          %>% left_join(STRAIN_META, by=c("strain"="strain_phys"))
@@ -104,39 +120,32 @@ if (nrow(no_wgs)>0) message("  Physiology-only: ", paste(no_wgs$strain, collapse
 
 message("\nComputing CSI...")
 csi <- summary_full %>%
-  filter(salinity_m==0, !is.na(AUC_delta_gamma_OD), !is.na(temperature)) %>%
+  filter(as.numeric(as.character(salinity_m))==0,
+         !is.na(AUC_delta_gamma_OD), !is.na(temperature)) %>%
   group_by(strain, temperature) %>%
-  summarise(AUC_mean=mean(AUC_delta_gamma_OD, na.rm=TRUE), .groups="drop") %>%
+  summarise(AUC_mean=mean(AUC_delta_gamma_OD,na.rm=TRUE),.groups="drop") %>%
   pivot_wider(names_from=temperature, values_from=AUC_mean, values_fn=mean)
 
-message("  CSI columns after pivot: ", paste(names(csi), collapse=" | "))
+message("  CSI columns: ", paste(names(csi), collapse=" | "))
+col4  <- names(csi)[str_detect(names(csi),"^4")]
+col30 <- names(csi)[str_detect(names(csi),"^30")]
+message("  Using: 4C='",col4,"' | 30C='",col30,"'")
 
-# Detect 4C and 30C columns by matching degree symbol variants
-col4  <- names(csi)[str_detect(names(csi), "4")]
-col30 <- names(csi)[str_detect(names(csi), "30")]
-message("  4C col='", paste(col4,collapse=","), "' | 30C col='", paste(col30,collapse=","), "'")
+csi <- csi %>%
+  mutate(
+    CSI       = .data[[col4]] / .data[[col30]],
+    CSI_class = case_when(
+      CSI>1.5  ~ "Cold-stimulated",
+      CSI<0.7  ~ "Warm-preferred",
+      TRUE     ~ "Neutral"
+    )
+  ) %>%
+  select(strain, CSI, CSI_class)
 
-if (length(col4)==1 && length(col30)==1) {
-  csi <- csi %>%
-    mutate(
-      CSI       = .data[[col4]] / .data[[col30]],
-      CSI_class = case_when(
-        CSI > 1.5 ~ "Cold-stimulated",
-        CSI < 0.7 ~ "Warm-preferred",
-        TRUE      ~ "Neutral"
-      )
-    ) %>%
-    select(strain, CSI, CSI_class)
-  message("  Cold-stimulated: ", sum(csi$CSI_class=="Cold-stimulated",na.rm=TRUE))
-  message("  Neutral:         ", sum(csi$CSI_class=="Neutral",na.rm=TRUE))
-  message("  Warm-preferred:  ", sum(csi$CSI_class=="Warm-preferred",na.rm=TRUE))
-  message("  NA (no 30C):     ", sum(is.na(csi$CSI)))
-  print(csi %>% arrange(desc(CSI)))
-} else {
-  message("  WARNING: Could not detect 4C/30C columns. Showing all column names:")
-  message("  ", paste(names(csi), collapse=" | "))
-  csi <- csi %>% mutate(CSI=NA_real_, CSI_class=NA_character_) %>% select(strain,CSI,CSI_class)
-}
+message("  Cold-stimulated: ", sum(csi$CSI_class=="Cold-stimulated",na.rm=TRUE))
+message("  Neutral:         ", sum(csi$CSI_class=="Neutral",na.rm=TRUE))
+message("  Warm-preferred:  ", sum(csi$CSI_class=="Warm-preferred",na.rm=TRUE))
+print(csi %>% arrange(desc(CSI)))
 
 summary_full <- summary_full %>% left_join(csi, by="strain")
 

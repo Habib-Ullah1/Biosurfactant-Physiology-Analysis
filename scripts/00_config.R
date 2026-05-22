@@ -48,7 +48,7 @@ FILE_WGS_META     <- file.path(WGS_INPUTS, "strain_metadata_all21.tsv")
 DAY_MAP <- c("1" = 1, "2" = 3, "3" = 5, "4" = 7, "5" = 9, "6" = 11)
 
 # Temperatures (ordered factor for plots)
-TEMP_LEVELS  <- c("4°C", "15°C", "30°C")
+TEMP_LEVELS  <- c("4C", "15C", "30C")
 
 # Salinities (ordered factor for plots)
 SAL_LEVELS   <- c(0.5, 1.0, 1.5)
@@ -122,9 +122,9 @@ STRAIN_META <- data.frame(
 
 # Temperature colours (blue = cold, grey = ambient, red = warm)
 COL_TEMP <- c(
-  "4°C"  = "#378ADD",   # blue
-  "15°C" = "#888780",   # grey
-  "30°C" = "#D85A30"    # coral/red
+  "4C"  = "#378ADD",   # blue
+  "15C" = "#888780",   # grey
+  "30C" = "#D85A30"    # coral/red
 )
 
 # Salinity colours (light to dark teal)
