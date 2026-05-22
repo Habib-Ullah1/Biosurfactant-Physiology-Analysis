@@ -1,0 +1,2 @@
+"test","W","p_value","n_bgc_pos","n_bgc_neg","median_bgc_pos","median_bgc_neg","rank_biserial_r"
+"Wilcoxon rank-sum",16,0.0606,9,8,194.2105,42.5867,0.5556
