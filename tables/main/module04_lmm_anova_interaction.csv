@@ -1,0 +1,4 @@
+"term","Sum Sq","Mean Sq","NumDF","DenDF","F value","Pr(>F)"
+"temperature",0.2154,0.1077,2,71.8568,1.3982,0.2537
+"salinity_m",0.0373,0.0186,2,70.2935,0.2418,0.7858
+"temperature:salinity_m",0.5724,0.1431,4,70.2935,1.8581,0.1275
