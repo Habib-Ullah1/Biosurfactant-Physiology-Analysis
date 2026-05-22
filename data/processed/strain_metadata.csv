@@ -1,0 +1,23 @@
+strain_phys,wgs_code,species,environment,has_lipopeptide_bgc,bgc_type_lipopeptide,has_wgs,CSI,CSI_class
+SW1C-HB20,A1,B. zhangzhouensis,Qaidam,TRUE,Lichenysin,TRUE,2.561730467969593,Cold-stimulated
+SW2C3,A2,B. zhangzhouensis,Qaidam,TRUE,Surfactin,TRUE,4.400833322773418,Cold-stimulated
+SW4C6,A3,B. zhangzhouensis,Qaidam,TRUE,Lichenysin,TRUE,1.103557733705884,Neutral
+SW1B1,A4,B. zhangzhouensis,Qaidam,TRUE,Lichenysin,TRUE,1.7403965163627226,Cold-stimulated
+SW2B2,A5,B. zhangzhouensis,Qaidam,TRUE,Lichenysin,TRUE,28.045599221478536,Cold-stimulated
+H2E-10C,A6,P. frigoritolerans,Qaidam,FALSE,NA,TRUE,16.131879018303806,Cold-stimulated
+H5G,A7,B. thuringiensis,Qaidam,FALSE,NA,TRUE,0.05074972945308985,Warm-preferred
+4-2C3,A8,B. zhangzhouensis,Qaidam,TRUE,Lichenysin,TRUE,0.5744874489920817,Warm-preferred
+M2-3-i9,A9,B. zhangzhouensis,Qaidam,TRUE,Lichenysin,TRUE,1.0275709571358,Neutral
+H5B,A10,B. thuringiensis,Qaidam,FALSE,NA,TRUE,0.32233908311034737,Warm-preferred
+SW2B-HB1,A11,Peribacillus sp.,Qaidam,FALSE,NA,TRUE,1.0578563629268396,Neutral
+SW2BHB1,A12,B. pumilus,Qaidam,TRUE,Lichenysin,TRUE,NA,NA
+4-2A1,A13,Virgibacillus sp.,Qaidam,FALSE,NA,TRUE,0.14203387518958377,Warm-preferred
+C8-P4,A14,B. zhangzhouensis,Qaidam,TRUE,Lichenysin,TRUE,0.8395742675813935,Neutral
+SX203,L1,Sphingobium sp.,Marine,FALSE,NA,TRUE,4.91050929026973,Cold-stimulated
+KR141,L2,Sphingobium sp.,Marine,FALSE,NA,TRUE,1.3158466352507754,Neutral
+KR108,L3,Kocuria rosea,Marine,FALSE,NA,TRUE,0.05683706729338568,Warm-preferred
+4-2C6,NA,NA,NA,NA,NA,FALSE,2.4306950350161887,Cold-stimulated
+SW1B2,NA,NA,NA,NA,NA,FALSE,1.7780194489032932,Cold-stimulated
+SW1C2,NA,NA,NA,NA,NA,FALSE,3.1356510831529474,Cold-stimulated
+M2-6B2,NA,NA,NA,NA,NA,FALSE,6.528318792648494,Cold-stimulated
+SX206,NA,NA,NA,NA,NA,FALSE,3.357891632111554,Cold-stimulated
