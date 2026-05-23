@@ -330,3 +330,106 @@ message("Effect size (rank-biserial r): ", round(r_rb,3))
 message("Qaidam vs Marine Wilcoxon p:   ", round(env_wt$p.value,4))
 message("H2E-10C: paradox strain noted (cold-stimulated, no lipopeptide BGC)")
 message("\n=== MODULE 6 COMPLETE ===\n")
+
+# =============================================================================
+# PATCH: BGC count vs production + stress gene correlation
+# =============================================================================
+message("\n--- PATCH: BGC count vs production (Spearman) ---")
+
+bgc_count_data <- wgs_meta %>%
+  select(Strain_Code, BGC_count) %>%
+  inner_join(phys_4C, by=c("Strain_Code"="strain")) %>%
+  filter(!is.na(max_dg_OD_4C), !is.na(BGC_count))
+
+message("Strains with BGC count + physiology: ", nrow(bgc_count_data))
+
+if (nrow(bgc_count_data) >= 5) {
+  bgc_spearman <- cor.test(bgc_count_data$BGC_count,
+                            bgc_count_data$max_dg_OD_4C,
+                            method="spearman")
+  message("Spearman rho (BGC count vs Max dg/OD at 4C): ",
+          round(bgc_spearman$estimate,3),
+          " p=", round(bgc_spearman$p.value,4))
+
+  p_bgc_count <- ggplot(bgc_count_data,
+                         aes(x=BGC_count, y=max_dg_OD_4C)) +
+    geom_smooth(method="lm", se=TRUE, colour="grey50",
+                linewidth=0.6, alpha=0.15) +
+    geom_point(size=2.5, colour="#1D9E75", alpha=0.85) +
+    ggrepel::geom_text_repel(aes(label=Strain_Code), size=2.2,
+                              max.overlaps=10, segment.size=0.3) +
+    scale_y_continuous(labels=scales::comma) +
+    labs(x="Total BGC count (antiSMASH)",
+         y="Max(dg/OD) at 4C",
+         title="BGC count vs biosurfactant production at 4C",
+         subtitle=paste0("Spearman rho=",
+                         round(bgc_spearman$estimate,3),
+                         " p=",round(bgc_spearman$p.value,4))) +
+    THEME_PUB
+
+  save_fig("module06_bgc_count_spearman", p_bgc_count,
+           w=FIG_W_SINGLE, h=4, dir=OUT)
+
+  bgc_count_result <- data.frame(
+    test="Spearman", rho=bgc_spearman$estimate,
+    p_value=bgc_spearman$p.value, n=nrow(bgc_count_data)
+  ) %>% mutate(across(where(is.numeric),~round(.,4)))
+  save_table(bgc_count_result,"module06_bgc_count_spearman",dir=TABLES_MAIN)
+}
+
+message("\n--- PATCH: Stress gene categories ---")
+stress_summary <- stress_genes %>%
+  group_by(Isolate, Category) %>%
+  summarise(n_genes=n(), .groups="drop") %>%
+  pivot_wider(names_from=Category, values_from=n_genes, values_fill=0)
+
+message("Stress gene categories: ", paste(names(stress_summary)[-1], collapse=" | "))
+
+# Link to physiology via WGS code
+stress_phys <- stress_summary %>%
+  left_join(wgs_meta %>% select(WGS_Code, Strain_Code),
+            by=c("Isolate"="WGS_Code")) %>%
+  inner_join(phys_4C, by=c("Strain_Code"="strain")) %>%
+  filter(!is.na(max_dg_OD_4C))
+
+message("Strains with stress genes + physiology: ", nrow(stress_phys))
+
+# Spearman for each stress category vs production
+biosurfactant_col <- names(stress_phys)[str_detect(
+  names(stress_phys), regex("biosurfactant|surfactant", ignore_case=TRUE))]
+message("Biosurfactant regulation column: ",
+        paste(biosurfactant_col, collapse=", "))
+
+if (length(biosurfactant_col)==1 && nrow(stress_phys)>=5) {
+  bs_cor <- cor.test(stress_phys[[biosurfactant_col]],
+                     stress_phys$max_dg_OD_4C,
+                     method="spearman")
+  message("Spearman rho (biosurfactant reg genes vs Max dg/OD at 4C): ",
+          round(bs_cor$estimate,3),
+          " p=",round(bs_cor$p.value,4))
+
+  p_stress <- ggplot(stress_phys,
+                     aes(x=.data[[biosurfactant_col]],
+                         y=max_dg_OD_4C)) +
+    geom_point(size=2.5, colour="#534AB7", alpha=0.85) +
+    ggrepel::geom_text_repel(aes(label=Strain_Code), size=2.2,
+                              max.overlaps=10, segment.size=0.3) +
+    scale_y_continuous(labels=scales::comma) +
+    labs(x="Biosurfactant regulation gene count",
+         y="Max(dg/OD) at 4C",
+         title="Stress gene regulatory capacity vs production",
+         subtitle=paste0("Spearman rho=",round(bs_cor$estimate,3),
+                         " p=",round(bs_cor$p.value,4))) +
+    THEME_PUB
+
+  save_fig("module06_stress_genes_spearman", p_stress,
+           w=FIG_W_SINGLE, h=4, dir=OUT)
+
+  stress_result <- data.frame(
+    gene_category=biosurfactant_col,
+    rho=bs_cor$estimate, p_value=bs_cor$p.value,
+    n=nrow(stress_phys)
+  ) %>% mutate(across(where(is.numeric),~round(.,4)))
+  save_table(stress_result,"module06_stress_gene_spearman",dir=TABLES_MAIN)
+}
+message("=== MODULE 6 PATCH COMPLETE ===\n")
